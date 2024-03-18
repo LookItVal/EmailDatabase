@@ -3,7 +3,7 @@ from typing import Union
 import time
 
 # CONSTANTS
-DATA_LIMIT: int = 50000
+DATA_LIMIT: int = 108000 # Value doubled to account for extra row
 GENERATION_TIME_LIMIT: int = 5000
 BASE_PROFIT: int = 10000
 PROFIT_PER_BYTE: int = 5
@@ -62,23 +62,23 @@ STATES: list = [
       'STATE.WY.TXT'
     ]
 
-def _raise(e: Exception) -> None:
-  raise e
+def _default() -> None:
+  raise Exception('Function Not Set')
 
 def lineCount(file: str) -> int:
   with open(f'data/{file}', 'r') as f:
     return len(f.readlines())
 
 class Database:
-  storageFunction: function = _raise(Exception('Storage Function Not Set'))
-  generateFunction: function  = _raise(Exception('Generate Function Not Set'))
+  storageFunction = _default
+  generateFunction = _default
   # DUNDER METHODS
   def __init__(self) -> None:
     # Why am I using numpy arrays for this?
     # Static Typing.
     # Low Level Memory Management.
     # Numpy will calculate the size of the array without me having to write a function.
-    self.data: np.array = np.array([[],[]], dtype=bytes) # its two dimentional because you also need to store the emails.
+    self._data: list = []
     self._cache: str = ""
     self.generationTime: int = 1
     
@@ -86,11 +86,16 @@ class Database:
   # PROPERTIES
   @property
   def storageUsage(self) -> int:
+    print('Data:', self.data.nbytes)
+    print(self.data)
+    print(self.data.shape[0])
+    for row in self.data:
+      print(row.nbytes)
     return self.data.nbytes + len(self.cache)
   
   @property
   def totalMessageGenerationTime(self) -> int:
-    return self.generationTime*self.data.shape[1]
+    return self.generationTime*self.data.shape[0]
   
   @property
   def cache(self) -> Union[str, bytes]:
@@ -102,63 +107,72 @@ class Database:
       raise ValueError('Cache cannot be longer than 8 bytes')
     self._cache = value
 
+  @property
+  def data(self) -> list:
+    return np.array(self._data)
+  
+  @data.setter
+  def data(self, value: list) -> None:
+    self._data = value
+
   # STATIC METHODS
   @staticmethod
   def generateEntries() -> np.array:
     startTime = time.time()
     # make an array of arrays of strings, with a length of 51, one for each state
-    newList = []
-    for _ in range(51):
-      newList.append([])
-    used = np.array(newList, dtype=int)
-    finalEntries = np.array([['Name','Email']], dtype=str)
-    while finalEntries.size < 2002:
-      print('Size:', finalEntries.size)
+    used = [set() for _ in range(51)]
+    finalEntries = [['Name','Email']]
+    # Read all the lines from the files
+    # Its wild how much faster it is when you do it this way rather than reading the file each time.
+    lines = [open(f'data/{state}', 'r').readlines() for state in STATES]
+    while len(finalEntries) < 1001:
+      print('Size:', len(finalEntries))
       state = np.random.randint(0, 50)
-      entry = np.random.randint(0, lineCount(STATES[state]))
+      entry = np.random.randint(0, len(lines[state]))
       if entry in used[state]:
         print('Duplicate Entry Found. Skipping.')
         continue
-      used[state] = np.append(used[state], entry)
-      with open(f'data/{STATES[state]}', 'r') as f:
-        lines = f.readlines()
-        name = lines[entry].strip().split(',')[3]
-        email = f'{name}.{state}@{entry}.example.com'
-        print(f'Generated: {name}, {email}')
-        finalEntries = np.append(finalEntries, [[name, email]] , axis=0)
+      used[state].add(entry)
+      name = lines[state][entry].strip().split(',')[3]
+      email = f'{name}.{state}@{entry}.example.com'
+      print(f'Generated: {name}, {email}')
+      finalEntries.append([name, email])
     # Remove the first row, which is the column names.
-    finalEntries = np.delete(finalEntries, 0, axis=0)
+    finalEntries.pop(0)
     end_time = time.time()
     print(f'Generated 1000 entries in {end_time-startTime} seconds.')
-    return finalEntries
+    return np.array(finalEntries, dtype=str)
   
   # PUBLIC METHODS
   def runTests(self) -> bool:
-    self.storageFunction(Database.generateEntries())
-    emails = self.generateFunction()
+    self.storageFunction(self, Database.generateEntries())
+    print(len(self.generateFunction(self)))
+    emails = np.array(self.generateFunction(self))
+    # make sure there are 1000 rows
     if emails.shape[0] != 1000:
-      print('Emails not generated correctly')
+      print('Shape is not of length 1000:', emails.shape[0])
       return False
     for email in emails:
-      if not email[1].endswith('.example.com'):
-        print('Emails not generated correctly')
+      if not email[1].endswith(b'.example.com'):
+        print(email[1])
+        print('Email does not end with .example.com')
         return False
       # check if email[0] starts with this "Hello, how are you "
-      if not email[0].startswith('Hello, how are you '):
-        print('Emails not generated correctly')
+      if not email[0].startswith(b'Hello, how are you '):
+        print('Email Messaeg does not start with "Hello, how are you "')
         return False
     return True
     
 
   def calculateProfits(self, iterations: int = 10) -> float:
-    # should take less than 5000 seconds to make messages
     profitArray = np.array([], dtype=int)
     for _ in range(iterations):
+      print('Begining Iteration:', _+1)
       self.__init__()
       if not self.runTests():
         print('Tests Failed')
         return 0
-      generationProfits = (GENERATION_TIME_LIMIT-self.totalMessageGenerationTime)*PROFIT_PER_SECOND if self.totalMessageGenerationTime > GENERATION_TIME_LIMIT else 0
+      generationProfits = (GENERATION_TIME_LIMIT-self.totalMessageGenerationTime)*PROFIT_PER_SECOND if self.totalMessageGenerationTime < GENERATION_TIME_LIMIT else 0
       if generationProfits == 0:
         print('Generation Time too slow:', self.totalMessageGenerationTime)
         return 0
@@ -167,5 +181,13 @@ class Database:
         print('Storage Usage too high:', self.storageUsage)
         return 0
       totalProfits = BASE_PROFIT + generationProfits + storageProfits
+      print('\nTests Passed')
+      print('Final Data:,', self.data)
+      print('Final Cache:', self.cache)
+      print('Generation Profits:', generationProfits)
+      print('Storage Profits:', storageProfits)
+      print('Total Profits:', totalProfits)
       profitArray = np.append(profitArray, totalProfits)
-    return np.mean(profitArray)
+    print('\nAll Iterations Run')
+    print('Average Calculated Profits:', np.mean(profitArray)/100)
+    return np.mean(profitArray)/100
