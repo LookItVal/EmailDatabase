@@ -3,6 +3,11 @@ from typing import Union
 import time
 
 # CONSTANTS
+DATA_LIMIT: int = 50000
+GENERATION_TIME_LIMIT: int = 5000
+BASE_PROFIT: int = 10000
+PROFIT_PER_BYTE: int = 5
+PROFIT_PER_SECOND: int = 10
 STATES: list = [
       'STATE.AK.TXT',
       'STATE.AL.TXT',
@@ -65,6 +70,8 @@ def lineCount(file: str) -> int:
     return len(f.readlines())
 
 class Database:
+  storageFunction: function = _raise(Exception('Storage Function Not Set'))
+  generateFunction: function  = _raise(Exception('Generate Function Not Set'))
   # DUNDER METHODS
   def __init__(self) -> None:
     # Why am I using numpy arrays for this?
@@ -74,13 +81,12 @@ class Database:
     self.data: np.array = np.array([[],[]], dtype=bytes) # its two dimentional because you also need to store the emails.
     self._cache: str = ""
     self.generationTime: int = 1
-    self.storageFunction: function = _raise(Exception('Storage Function Not Set'))
-    self.generateFunction: function  = _raise(Exception('Generate Function Not Set'))
+    
   
   # PROPERTIES
   @property
   def storageUsage(self) -> int:
-    return self.data.nbytes
+    return self.data.nbytes + len(self.cache)
   
   @property
   def totalMessageGenerationTime(self) -> int:
@@ -125,4 +131,41 @@ class Database:
     end_time = time.time()
     print(f'Generated 1000 entries in {end_time-startTime} seconds.')
     return finalEntries
+  
   # PUBLIC METHODS
+  def runTests(self) -> bool:
+    self.storageFunction(Database.generateEntries())
+    emails = self.generateFunction()
+    if emails.shape[0] != 1000:
+      print('Emails not generated correctly')
+      return False
+    for email in emails:
+      if not email[1].endswith('.example.com'):
+        print('Emails not generated correctly')
+        return False
+      # check if email[0] starts with this "Hello, how are you "
+      if not email[0].startswith('Hello, how are you '):
+        print('Emails not generated correctly')
+        return False
+    return True
+    
+
+  def calculateProfits(self, iterations: int = 10) -> float:
+    # should take less than 5000 seconds to make messages
+    profitArray = np.array([], dtype=int)
+    for _ in range(iterations):
+      self.__init__()
+      if not self.runTests():
+        print('Tests Failed')
+        return 0
+      generationProfits = (GENERATION_TIME_LIMIT-self.totalMessageGenerationTime)*PROFIT_PER_SECOND if self.totalMessageGenerationTime > GENERATION_TIME_LIMIT else 0
+      if generationProfits == 0:
+        print('Generation Time too slow:', self.totalMessageGenerationTime)
+        return 0
+      storageProfits = (DATA_LIMIT-self.storageUsage)*PROFIT_PER_BYTE if self.storageUsage < DATA_LIMIT else 0
+      if storageProfits == 0:
+        print('Storage Usage too high:', self.storageUsage)
+        return 0
+      totalProfits = BASE_PROFIT + generationProfits + storageProfits
+      profitArray = np.append(profitArray, totalProfits)
+    return np.mean(profitArray)
