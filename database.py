@@ -72,6 +72,8 @@ def lineCount(file: str) -> int:
 class Database:
   storageFunction = _default
   generateFunction = _default
+  generationTime: int = 0
+
   # DUNDER METHODS
   def __init__(self) -> None:
     # Why am I using numpy arrays for this?
@@ -80,9 +82,7 @@ class Database:
     # Numpy will calculate the size of the array without me having to write a function.
     self._data: list = []
     self._cache: str = ""
-    self.generationTime: int = 1
     
-  
   # PROPERTIES
   @property
   def storageUsage(self) -> int:
@@ -103,11 +103,13 @@ class Database:
     self._cache = value
 
   @property
-  def data(self) -> list:
+  def data(self) -> np.ndarray:
+    if isinstance(self._data, np.ndarray):
+      return self._data
     return np.array(self._data)
   
   @data.setter
-  def data(self, value: list) -> None:
+  def data(self, value: list | np.ndarray) -> None:
     self._data = value
 
   # STATIC METHODS
@@ -137,9 +139,11 @@ class Database:
   
   # PUBLIC METHODS
   def runTests(self) -> bool:
-    self.storageFunction(self, Database.generateEntries())
-    print(len(self.generateFunction(self)))
-    emails = np.array(self.generateFunction(self))
+    self.storageFunction(Database.generateEntries())
+    if self.generationTime == 0:
+      print('Generation Time has not been set')
+      return False
+    emails = np.array(self.generateFunction())
     # make sure there are 1000 rows
     if emails.shape[0] != 1000:
       print('Shape is not of length 1000:', emails.shape[0])
@@ -159,13 +163,13 @@ class Database:
   def calculateProfits(self, iterations: int = 10) -> float:
     profitArray = np.array([], dtype=int)
     for i in range(iterations):
-      print('Begining Iteration:', _+1)
+      print('Begining Iteration:', i+1)
       self.__init__()
       if not self.runTests():
         print(f'\n----- Iteration {i+1}: FAILED -----')
-        print('Final Data:,', self.data if self.data else '{Cache Empty}')
-        print('Final Data Lenght:', len(self.data), 'Entries')
-        print('Final Cache:', self.cache)
+        print('Final Data:,', self.data)
+        print('Final Data Length:', len(self.data), 'Entries')
+        print('Final Cache:', self.cache if self.cache else '{Cache Empty}')
         print('Storage Usage:', self.storageUsage, 'Bytes')
         print('Total Message Generation Time:', self.totalMessageGenerationTime, 'Seconds')
         return 0
@@ -179,9 +183,9 @@ class Database:
         return 0
       totalProfits = BASE_PROFIT + generationProfits + storageProfits
       print(f'\n----- Iteration {i+1}: PASSED -----')
-      print('Final Data:,', self.data if self.data else '{Cache Empty}')
+      print('Final Data:,', self.data)
       print('Final Data Lenght:', len(self.data), 'Entries')
-      print('Final Cache:', self.cache)
+      print('Final Cache:', self.cache if self.cache else '{Cache Empty}')
       print('Storage Usage:', self.storageUsage, 'Bytes')
       print('Total Message Generation Time:', self.totalMessageGenerationTime, 'Seconds')
       print('Generation Profits: $', generationProfits/100)
