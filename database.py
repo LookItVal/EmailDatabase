@@ -144,19 +144,33 @@ class Database:
       print('Generation Time has not been set')
       return False
     emails = np.array(self.generateFunction())
+    print('Generated Emails')
+    print(emails[0:3])
+    print('...')
+    print(emails[-4:-1])
     # make sure there are 1000 rows
     if emails.shape[0] != 1000:
       print('Shape is not of length 1000:', emails.shape[0])
       return False
     for email in emails:
-      if not email[1].endswith(b'.example.com'):
-        print(email[1])
-        print('Email does not end with .example.com')
-        return False
-      # check if email[0] starts with this "Hello, how are you "
-      if not email[0].startswith(b'Hello, how are you '):
-        print('Email Messaeg does not start with "Hello, how are you "')
-        return False
+      if not isinstance(email[0], bytes):
+        if not email[0].startswith('Hello, how are you '):
+          print('Email Message does not start with "Hello, how are you "')
+          return False
+      else:
+        if not email[0].startswith(b'Hello, how are you '):
+          print('Email Message does not start with "Hello, how are you "')
+          return False
+      if not isinstance(email[1], bytes):
+        if not email[1].endswith('.example.com'):
+          print(email[1])
+          print('Email does not end with .example.com')
+          return False
+      else:
+        if not email[1].endswith(b'.example.com'):
+          print(email[1])
+          print('Email does not end with .example.com')
+          return False
     return True
     
 
@@ -168,8 +182,6 @@ class Database:
       result = True
       if not self.runTests():
         print(f'\n----- Iteration {i+1}: FAILED -----')
-        print('Storage Usage:', self.storageUsage, 'Bytes')
-        print('Total Message Generation Time:', self.totalMessageGenerationTime, 'Seconds')
         result = False
       generationProfits = (GENERATION_TIME_LIMIT-self.totalMessageGenerationTime)*PROFIT_PER_SECOND if self.totalMessageGenerationTime < GENERATION_TIME_LIMIT else 0
       if generationProfits == 0:
