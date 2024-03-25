@@ -86,11 +86,6 @@ class Database:
   # PROPERTIES
   @property
   def storageUsage(self) -> int:
-    print('Data:', self.data.nbytes)
-    print(self.data)
-    print(self.data.shape[0])
-    for row in self.data:
-      print(row.nbytes)
     return self.data.nbytes + len(self.cache)
   
   @property
@@ -126,16 +121,13 @@ class Database:
     # Its wild how much faster it is when you do it this way rather than reading the file each time.
     lines = [open(f'data/{state}', 'r').readlines() for state in STATES]
     while len(finalEntries) < 1001:
-      print('Size:', len(finalEntries))
       state = np.random.randint(0, 50)
       entry = np.random.randint(0, len(lines[state]))
       if entry in used[state]:
-        print('Duplicate Entry Found. Skipping.')
         continue
       used[state].add(entry)
       name = lines[state][entry].strip().split(',')[3]
       email = f'{name}.{state}@{entry}.example.com'
-      print(f'Generated: {name}, {email}')
       finalEntries.append([name, email])
     # Remove the first row, which is the column names.
     finalEntries.pop(0)
@@ -166,11 +158,16 @@ class Database:
 
   def calculateProfits(self, iterations: int = 10) -> float:
     profitArray = np.array([], dtype=int)
-    for _ in range(iterations):
+    for i in range(iterations):
       print('Begining Iteration:', _+1)
       self.__init__()
       if not self.runTests():
-        print('Tests Failed')
+        print(f'\n----- Iteration {i+1}: FAILED -----')
+        print('Final Data:,', self.data if self.data else '{Cache Empty}')
+        print('Final Data Lenght:', len(self.data), 'Entries')
+        print('Final Cache:', self.cache)
+        print('Storage Usage:', self.storageUsage, 'Bytes')
+        print('Total Message Generation Time:', self.totalMessageGenerationTime, 'Seconds')
         return 0
       generationProfits = (GENERATION_TIME_LIMIT-self.totalMessageGenerationTime)*PROFIT_PER_SECOND if self.totalMessageGenerationTime < GENERATION_TIME_LIMIT else 0
       if generationProfits == 0:
@@ -181,13 +178,16 @@ class Database:
         print('Storage Usage too high:', self.storageUsage)
         return 0
       totalProfits = BASE_PROFIT + generationProfits + storageProfits
-      print('\nTests Passed')
-      print('Final Data:,', self.data)
+      print(f'\n----- Iteration {i+1}: PASSED -----')
+      print('Final Data:,', self.data if self.data else '{Cache Empty}')
+      print('Final Data Lenght:', len(self.data), 'Entries')
       print('Final Cache:', self.cache)
-      print('Generation Profits:', generationProfits)
-      print('Storage Profits:', storageProfits)
-      print('Total Profits:', totalProfits)
+      print('Storage Usage:', self.storageUsage, 'Bytes')
+      print('Total Message Generation Time:', self.totalMessageGenerationTime, 'Seconds')
+      print('Generation Profits: $', generationProfits/100)
+      print('Storage Profits: $', storageProfits/100)
+      print('Total Profits: $', totalProfits/100)
       profitArray = np.append(profitArray, totalProfits)
     print('\nAll Iterations Run')
-    print('Average Calculated Profits:', np.mean(profitArray)/100)
+    print('Average Calculated Profits: $', np.mean(profitArray)/100)
     return np.mean(profitArray)/100
