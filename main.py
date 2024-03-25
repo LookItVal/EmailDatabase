@@ -1,7 +1,7 @@
 from database import Database
 import numpy as np
 
-def example1():
+def example1(i: int = 10):
   # This initializes the database object.
   db = Database()
   
@@ -30,10 +30,10 @@ def example1():
   # By default it will generate 10 iterations of 1000 emails with different combinations of names for the entries.
   # If any one test fails, it will return with a profit of 0.
   # If all tests pass, it will return with the average calculated profit for each iteration of the tests.
-  db.calculateProfits()
+  db.calculateProfits(i)
 
 
-def example2():
+def example2(i: int = 10):
   db = Database()
 
   # This is only different in that it uses a different data type for the data.
@@ -55,12 +55,14 @@ def example2():
   db.generateFunction = generate.__get__(db, Database)
   db.generationTime = 1
 
-  db.calculateProfits()
+  db.calculateProfits(i)
 
 
 # This is just basic python boilerplate below.
 def main():
-  example2();
+  example2(1)
+  print('----------------')
+  example1(1)
 
 
 if __name__ == "__main__":

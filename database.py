@@ -3,10 +3,10 @@ from typing import Union
 import time
 
 # CONSTANTS
-DATA_LIMIT: int = 108000 # Value doubled to account for extra row
+DATA_LIMIT: int = 90000 # Value doubled to account for extra row
 GENERATION_TIME_LIMIT: int = 5000
 BASE_PROFIT: int = 10000
-PROFIT_PER_BYTE: int = 5
+PROFIT_PER_BYTE: int = 1
 PROFIT_PER_SECOND: int = 10
 STATES: list = [
       'STATE.AK.TXT',
@@ -165,29 +165,35 @@ class Database:
     for i in range(iterations):
       print('Begining Iteration:', i+1)
       self.__init__()
+      result = True
       if not self.runTests():
         print(f'\n----- Iteration {i+1}: FAILED -----')
-        print('Final Data:,', self.data)
-        print('Final Data Length:', len(self.data), 'Entries')
-        print('Final Cache:', self.cache if self.cache else '{Cache Empty}')
         print('Storage Usage:', self.storageUsage, 'Bytes')
         print('Total Message Generation Time:', self.totalMessageGenerationTime, 'Seconds')
-        return 0
+        result = False
       generationProfits = (GENERATION_TIME_LIMIT-self.totalMessageGenerationTime)*PROFIT_PER_SECOND if self.totalMessageGenerationTime < GENERATION_TIME_LIMIT else 0
       if generationProfits == 0:
+        print(f'\n----- Iteration {i+1}: FAILED -----')
         print('Generation Time too slow:', self.totalMessageGenerationTime)
-        return 0
+        result = False
       storageProfits = (DATA_LIMIT-self.storageUsage)*PROFIT_PER_BYTE if self.storageUsage < DATA_LIMIT else 0
       if storageProfits == 0:
+        print(f'\n----- Iteration {i+1}: FAILED -----')
         print('Storage Usage too high:', self.storageUsage)
-        return 0
+        result = False
+      if result:
+        print(f'\n----- Iteration {i+1}: PASSED -----')
       totalProfits = BASE_PROFIT + generationProfits + storageProfits
-      print(f'\n----- Iteration {i+1}: PASSED -----')
-      print('Final Data:,', self.data)
+      print('Final Data:')
+      print(self.data[0:3])
+      print('...')
+      print(self.data[-4:-1])
       print('Final Data Lenght:', len(self.data), 'Entries')
       print('Final Cache:', self.cache if self.cache else '{Cache Empty}')
       print('Storage Usage:', self.storageUsage, 'Bytes')
       print('Total Message Generation Time:', self.totalMessageGenerationTime, 'Seconds')
+      if not result:
+        return 0
       print('Generation Profits: $', generationProfits/100)
       print('Storage Profits: $', storageProfits/100)
       print('Total Profits: $', totalProfits/100)
